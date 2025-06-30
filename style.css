@@ -179,3 +179,41 @@ label {
   font-weight: bold;
   margin-left: 10px;
 }
+
+/* Add to button styles */
+button.danger {
+    background: #ff6b6b;
+}
+
+button.warning {
+    background: #ffd166;
+}
+
+/* Add to member list items */
+.member-list li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.remove-member {
+    background: #ff6b6b;
+    padding: 3px 8px;
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+.pill-button {
+  padding: 5px 10px;
+  border-radius: 20px;
+  background: #ffffff33;
+  border: 1px solid #fff;
+  color: #fff;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.pill-button:hover {
+  background: #ffffff55;
+}
+
