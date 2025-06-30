@@ -1,42 +1,58 @@
 let currentGroup = null;
 
+// Load groups after user is authenticated
 function loadGroups() {
   const groups = JSON.parse(localStorage.getItem("groups")) || {};
   const groupList = document.getElementById("group-list");
   groupList.innerHTML = '';
 
-  Object.keys(groups).forEach(group => {
+  Object.keys(groups).forEach(groupName => {
     const btn = document.createElement("button");
-    btn.textContent = group;
-    btn.onclick = () => selectGroup(group);
+    btn.textContent = `${groupName} (Admin: ${groups[groupName].admin})`;
+    btn.onclick = () => selectGroup(groupName);
     groupList.appendChild(btn);
   });
 }
 
 function createGroup() {
-  const name = document.getElementById("group-name").value.trim();
-  if (!name) return alert("Enter a group name");
+  const groupNameInput = document.getElementById("group-name").value.trim();
+  if (!groupNameInput) return alert("Enter a group name");
+  if (!window.currentUser) return alert("You must be logged in to create a group.");
 
-  let groups = JSON.parse(localStorage.getItem("groups")) || {};
-  if (groups[name]) return alert("Group already exists!");
+  const groups = JSON.parse(localStorage.getItem("groups")) || {};
+  if (groups[groupNameInput]) return alert("Group already exists!");
 
-  groups[name] = { members: [], expenses: [] };
+  groups[groupNameInput] = {
+    admin: window.currentUser.displayName,
+    members: [window.currentUser.displayName],
+    expenses: []
+  };
+
   localStorage.setItem("groups", JSON.stringify(groups));
   loadGroups();
   document.getElementById("group-name").value = '';
 }
 
-function selectGroup(name) {
-  currentGroup = name;
+function selectGroup(groupName) {
+  currentGroup = groupName;
+
+  const groups = JSON.parse(localStorage.getItem("groups"));
+  const group = groups[groupName];
+
   document.getElementById("member-management").classList.remove("hidden");
   document.getElementById("expense-section").classList.remove("hidden");
   document.getElementById("balance-section").classList.remove("hidden");
   document.getElementById("settlement-section").classList.remove("hidden");
-  document.getElementById("current-group-name").textContent = name;
+
+  document.getElementById("current-group-name").textContent = groupName;
+  document.getElementById("admin-indicator").textContent = `Admin: ${group.admin}`;
+
   renderMembers();
   updateExpenseUI();
   renderBalances();
   suggestSettlements();
+  loadFriends(); // Show Invite buttons after group selected
+
 }
 
 function addMember() {
@@ -56,7 +72,8 @@ function addMember() {
 
 function renderMembers() {
   const groups = JSON.parse(localStorage.getItem("groups"));
-  const members = groups[currentGroup].members;
+  const group = groups[currentGroup];
+  const members = group.members;
 
   const memberList = document.getElementById("member-list");
   memberList.innerHTML = '';
@@ -64,6 +81,15 @@ function renderMembers() {
   members.forEach(m => {
     const li = document.createElement("li");
     li.textContent = m;
+
+    if (group.admin === window.currentUser?.displayName) {
+      const removeBtn = document.createElement("button");
+      removeBtn.textContent = "×";
+      removeBtn.className = "remove-member";
+      removeBtn.onclick = () => removeMember(m);
+      li.appendChild(removeBtn);
+    }
+
     memberList.appendChild(li);
   });
 }
@@ -211,6 +237,74 @@ function settleAll() {
   showToast("All expenses settled!");
 }
 
+function removeMember(memberName) {
+  const groups = JSON.parse(localStorage.getItem("groups"));
+  const group = groups[currentGroup];
+
+  if (!group.members.includes(memberName)) return;
+
+  group.expenses.forEach(expense => {
+    if (expense.split[memberName]) {
+      delete expense.split[memberName];
+    }
+  });
+
+  group.members = group.members.filter(m => m !== memberName);
+  localStorage.setItem("groups", JSON.stringify(groups));
+  renderMembers();
+  renderBalances();
+  suggestSettlements();
+}
+
+function handleDeleteGroup() {
+  if (!currentGroup) return;
+  const groups = JSON.parse(localStorage.getItem("groups"));
+  const group = groups[currentGroup];
+
+  if (group.admin !== window.currentUser.displayName) {
+    return alert("Only the admin can delete this group.");
+  }
+
+  const confirmDelete = confirm(`Are you sure you want to delete group "${currentGroup}"?`);
+  if (confirmDelete) {
+    delete groups[currentGroup];
+    localStorage.setItem("groups", JSON.stringify(groups));
+    currentGroup = null;
+    loadGroups();
+
+    document.getElementById("member-management").classList.add("hidden");
+    document.getElementById("expense-section").classList.add("hidden");
+    document.getElementById("balance-section").classList.add("hidden");
+    document.getElementById("settlement-section").classList.add("hidden");
+
+    showToast("Group deleted successfully!");
+  }
+}
+
+
+function leaveGroup() {
+  if (!currentGroup) return;
+
+  const groups = JSON.parse(localStorage.getItem("groups"));
+  const group = groups[currentGroup];
+  const currentUser = window.currentUser.displayName;
+
+  if (group.admin === currentUser) {
+    alert("Admins must delete group instead of leaving");
+    return;
+  }
+
+  group.members = group.members.filter(m => m !== currentUser);
+  localStorage.setItem("groups", JSON.stringify(groups));
+
+  currentGroup = null;
+  loadGroups();
+  document.getElementById("member-management").classList.add("hidden");
+  document.getElementById("expense-section").classList.add("hidden");
+  document.getElementById("balance-section").classList.add("hidden");
+  document.getElementById("settlement-section").classList.add("hidden");
+}
+
 function showToast(msg) {
   const toast = document.getElementById("toast");
   toast.textContent = msg;
@@ -221,5 +315,68 @@ function showToast(msg) {
     toast.classList.add("hidden");
   }, 2000);
 }
+function getFriendsKey() {
+  return `friends_${window.currentUser.email}`;
+}
 
-window.onload = loadGroups;
+function loadFriends() {
+  const friends = JSON.parse(localStorage.getItem(getFriendsKey())) || [];
+  const list = document.getElementById("friend-list");
+  list.innerHTML = '';
+
+  friends.forEach(friend => {
+    const li = document.createElement("li");
+    li.textContent = friend;
+
+    // Only show Invite if a group is selected
+    if (currentGroup) {
+      const inviteBtn = document.createElement("button");
+      inviteBtn.textContent = "📨 Invite";
+      inviteBtn.className = "pill-button";
+      inviteBtn.style.marginLeft = "10px";
+      inviteBtn.onclick = () => confirmInvite(friend);
+      li.appendChild(inviteBtn);
+    }
+
+    list.appendChild(li);
+  });
+}
+
+
+
+function sendFriendRequest() {
+  const email = document.getElementById("friend-email").value.trim();
+  if (!email || email === window.currentUser.email) return alert("Invalid email");
+
+  const myFriends = JSON.parse(localStorage.getItem(getFriendsKey())) || [];
+  if (myFriends.includes(email)) return alert("Already a friend");
+
+  // Simulate "friend request" and auto-accept for simplicity
+  myFriends.push(email);
+  localStorage.setItem(getFriendsKey(), JSON.stringify(myFriends));
+  document.getElementById("friend-email").value = '';
+  loadFriends();
+  showToast(`Added ${email} as friend!`);
+}
+function confirmInvite(friendEmail) {
+  if (!currentGroup) return alert("Select a group first.");
+  const confirmMsg = confirm(`Invite ${friendEmail} to "${currentGroup}" group?`);
+  if (confirmMsg) inviteFriendToGroup(friendEmail);
+}
+
+function inviteFriendToGroup(friendEmail) {
+  const groups = JSON.parse(localStorage.getItem("groups"));
+  const group = groups[currentGroup];
+
+  if (!group.members.includes(friendEmail)) {
+    group.members.push(friendEmail);
+    localStorage.setItem("groups", JSON.stringify(groups));
+    renderMembers();
+    updateExpenseUI();
+    showToast(`Invited ${friendEmail} to group!`);
+  } else {
+    showToast(`${friendEmail} is already a member`);
+  }
+}
+
+
