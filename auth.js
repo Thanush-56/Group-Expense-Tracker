@@ -1,5 +1,12 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  getAuth,
+  GoogleAuthProvider,
+  signInWithPopup,
+  onAuthStateChanged,
+  signOut,
+  updateProfile
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 // Replace with your own Firebase config
 const firebaseConfig = {
@@ -16,6 +23,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
+// Google Sign-In
 window.signInWithGoogle = function () {
   signInWithPopup(auth, provider)
     .then(result => showApp(result.user))
@@ -25,6 +33,7 @@ window.signInWithGoogle = function () {
     });
 };
 
+// Sign Out
 window.signOutUser = function () {
   signOut(auth)
     .then(() => location.reload())
@@ -34,16 +43,31 @@ window.signOutUser = function () {
     });
 };
 
+// Show main app after login
 function showApp(user) {
   document.getElementById('login-container').classList.add('hidden');
   document.getElementById('main-app').classList.remove('hidden');
   document.getElementById('user-name').textContent = user.displayName;
   document.getElementById('user-photo').src = user.photoURL;
 }
-  
-onAuthStateChanged(auth, user => {
-  if (user) showApp(user);
-  else {
+
+// Auth state listener (correct modular version)
+onAuthStateChanged(auth, async user => {
+  if (user) {
+    // Set global currentUser
+    if (!user.displayName) {
+      const name = prompt("Enter your name:");
+      if (name) {
+        await updateProfile(user, { displayName: name });
+        user.displayName = name; // Update local object
+      }
+    }
+
+    window.currentUser = user;
+    showApp(user);
+    loadFriends(); // 👈 Load friends after login
+    loadGroups(); // ← Important: triggers script.js loading groups
+  } else {
     document.getElementById('login-container').classList.remove('hidden');
     document.getElementById('main-app').classList.add('hidden');
   }
