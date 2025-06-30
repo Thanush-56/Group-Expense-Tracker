@@ -32,6 +32,17 @@
 
     <!-- Group Management -->
     <div class="card-section glass">
+      <!-- Friend Management -->
+<div class="card-section glass">
+  <h2>👥 My Friends</h2>
+
+  <div class="input-row">
+    <input type="text" id="friend-email" placeholder="Friend's Email" />
+    <button onclick="sendFriendRequest()">➕ Add Friend</button>
+  </div>
+
+  <ul id="friend-list" class="member-list"></ul>
+</div>
       <h2>Create or Select Group</h2>
       <div class="input-row">
         <input type="text" id="group-name" placeholder="Enter group name" />
@@ -40,15 +51,28 @@
       <div id="group-list" class="pill-container"></div>
     </div>
 
-    <!-- Member Management -->
-    <div id="member-management" class="card-section glass hidden">
-      <h2>Manage "<span id="current-group-name"></span>"</h2>
-      <div class="input-row">
-        <input type="text" id="member-name" placeholder="Add member name" />
-        <button onclick="addMember()">👤 Add</button>
-      </div>
-      <ul id="member-list" class="member-list"></ul>
-    </div>
+<!-- Member Management -->
+<div id="member-management" class="card-section glass hidden">
+  <h2>Manage "<span id="current-group-name"></span>"</h2>
+  <p id="admin-indicator"></p>
+
+  <div class="input-row">
+    <input type="text" id="member-name" placeholder="Add member name" />
+    <button onclick="addMember()">👤 Add</button>
+  </div>
+
+  <ul id="member-list" class="member-list"></ul>
+
+  <div class="input-row">
+    <button onclick="handleDeleteGroup()" style="background:#ff6b6b;">
+      🗑️ Delete Group
+    </button>
+    <button onclick="leaveGroup()" style="background:#ffd166;">
+      👋 Leave Group
+    </button>
+  </div>
+</div>
+
 
     <!-- Expense Logging -->
     <div id="expense-section" class="card-section glass hidden">
@@ -88,8 +112,35 @@
       <button onclick="settleAll()">💰 Mark All as Settled</button>
     </div>
 
+    <!-- Add to member management section -->
+<div id="member-management" class="card-section glass hidden">
+    <h3>Manage <span id="current-group-name"></span></h3>
+    <p id="admin-indicator"></p>
+    
+    <!-- Existing member controls -->
+    <div class="input-row">
+        <input type="text" id="member-name" placeholder="Member name">
+        <button onclick="addMember()">👤 Add</button>
+    </div>
+    
+    <!-- Add remove button next to each member -->
+    <ul id="member-list" class="member-list"></ul>
+    
+    <!-- Add group controls -->
+    <div class="input-row">
+        <button onclick="deleteGroup(currentGroup)" style="background:#ff6b6b;">
+            🗑️ Delete Group
+        </button>
+        <button onclick="leaveGroup()" style="background:#ffd166;">
+            👋 Leave Group
+        </button>
+    </div>
+</div>
+
+
     <!-- Toast Notification -->
     <div id="toast" class="toast hidden">Settled!</div>
   </div>
 </body>
 </html>
+
